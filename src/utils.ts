@@ -109,10 +109,11 @@ export const sendFilesWithPathToShopify = async (
         `--only=${file.replace('./', '').replace(`${process.cwd()}/`, '')}`
     )
     .join(' ')
-
+  debug(`Push Only Command: ${pushOnlyCommand}`)
   for (const file of files) {
     const baseFile = file.replace(process.cwd(), '')
     const destination = `${process.cwd()}/remote/new/${baseFile}`
+    debug(`Copying ${file} to ${destination}`)
     copySync(file, destination, {
       overwrite: true
     })

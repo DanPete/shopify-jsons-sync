@@ -166,9 +166,11 @@ const sendFilesWithPathToShopify = async (files, { targetThemeId, store }) => {
     const pushOnlyCommand = files
         .map(file => `--only=${file.replace('./', '').replace(`${process.cwd()}/`, '')}`)
         .join(' ');
+    (0, core_1.debug)(`Push Only Command: ${pushOnlyCommand}`);
     for (const file of files) {
         const baseFile = file.replace(process.cwd(), '');
         const destination = `${process.cwd()}/remote/new/${baseFile}`;
+        (0, core_1.debug)(`Copying ${file} to ${destination}`);
         (0, fs_extra_1.copySync)(file, destination, {
             overwrite: true
         });
