@@ -36,8 +36,13 @@ const exec_1 = __nccwpck_require__(1514);
 const core_1 = __nccwpck_require__(2186);
 async function run() {
     try {
-        const targetThemeId = core.getInput('theme');
         const store = core.getInput('store');
+        // TARGET THEME: This is the destination theme that will RECEIVE the synced JSON files
+        // All processed locale and template JSON files will be pushed TO this theme
+        const targetThemeId = core.getInput('theme');
+        // SOURCE THEME: This is the theme we pull/sync JSON files FROM
+        // If not specified, we'll use the live theme as the source
+        const sourceThemeId = core.getInput('source-theme');
         const workingDirectory = core.getInput('working-directory', {
             trimWhitespace: true
         });
@@ -46,9 +51,19 @@ async function run() {
             process.chdir(workingDirectory);
         }
         await (0, utils_1.cleanRemoteFiles)();
-        await (0, exec_1.exec)(`shopify theme pull --only config/*_data.json --only templates/**/*.json --only locales/*.json --live --path remote --store ${store} --verbose`, [], utils_1.EXEC_OPTIONS);
+        // Determine source: use source-theme if provided, otherwise use live theme
+        // This controls WHERE we pull the JSON files FROM
+        const themeFlag = sourceThemeId ? `--theme ${sourceThemeId}` : '--live';
+        const syncThemeInfo = sourceThemeId
+            ? `theme ${sourceThemeId}`
+            : 'live theme';
+        (0, core_1.debug)(`Syncing JSON files from ${syncThemeInfo} to target theme ${targetThemeId}`);
+        // STEP 1: Pull JSON files FROM the source theme (or live theme)
+        await (0, exec_1.exec)(`shopify theme pull --only config/*_data.json --only templates/**/*.json --only locales/*.json ${themeFlag} --path remote --store ${store} --verbose`, [], utils_1.EXEC_OPTIONS);
+        // STEP 2: Process and prepare the JSON files for syncing
         const localeFilesToPush = await (0, utils_1.syncLocaleAndSettingsJSON)();
         const newTemplatesToPush = await (0, utils_1.getNewTemplatesToRemote)();
+        // STEP 3: Push the processed JSON files TO the target theme
         await (0, utils_1.sendFilesWithPathToShopify)([...localeFilesToPush, ...newTemplatesToPush], {
             targetThemeId,
             store
