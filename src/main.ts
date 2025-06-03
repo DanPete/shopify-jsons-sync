@@ -35,9 +35,13 @@ async function run(): Promise<void> {
     // Determine source: use source-theme if provided, otherwise use live theme
     // This controls WHERE we pull the JSON files FROM
     const themeFlag = sourceThemeId ? `--theme ${sourceThemeId}` : '--live'
-    const syncThemeInfo = sourceThemeId ? `theme ${sourceThemeId}` : 'live theme'
+    const syncThemeInfo = sourceThemeId
+      ? `theme ${sourceThemeId}`
+      : 'live theme'
 
-    debug(`Syncing JSON files from ${syncThemeInfo} to target theme ${targetThemeId}`)
+    debug(
+      `Syncing JSON files from ${syncThemeInfo} to target theme ${targetThemeId}`
+    )
 
     // STEP 1: Pull JSON files FROM the source theme (or live theme)
     await exec(
