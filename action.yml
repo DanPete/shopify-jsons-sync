@@ -8,7 +8,11 @@ inputs:
 
   theme:
     required: true
-    description: 'Target Theme ID'
+    description: 'Target Theme ID (where synced files will be pushed to)'
+
+  source-theme:
+    required: false
+    description: 'Source Theme ID to sync JSON files from (if not provided, syncs from live theme)'
 
   working-directory:
     required: false

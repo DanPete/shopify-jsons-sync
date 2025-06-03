@@ -1,105 +1,120 @@
-<p align="center">
-  <a href="https://github.com/actions/typescript-action/actions"><img alt="typescript-action status" src="https://github.com/actions/typescript-action/workflows/build-test/badge.svg"></a>
-</p>
+# Shopify Theme JSON Sync Action
 
-# Create a JavaScript Action using TypeScript
+A GitHub Action to sync JSON content (locale strings & JSON templates) between themes in a Shopify store.
 
-Use this template to bootstrap the creation of a TypeScript action.:rocket:
+## Features
 
-This template includes compilation support, tests, a validation workflow, publishing, and versioning guidance.  
+- Syncs locale files (`locales/*.json`)
+- Syncs configuration data files (`config/*_data.json`) 
+- Syncs template files (`templates/**/*.json`)
+- Supports syncing from live theme or specific unpublished themes
+- Merges local changes with remote content
+- Only pushes new content, doesn't edit existing content on the target theme
+- **Safety First**: Never pushes to live themes - only pulls from live (or specific source theme) and pushes to unpublished themes
 
-If you are new, there's also a simpler introduction.  See the [Hello World JavaScript Action](https://github.com/actions/hello-world-javascript-action)
+## Usage
 
-## Create an action from this template
-
-Click the `Use this Template` and provide the new repo details for your action
-
-## Code in Main
-
-> First, you'll need to have a reasonably modern version of `node` handy. This won't work with versions older than 9, for instance.
-
-Install the dependencies  
-```bash
-$ npm install
-```
-
-Build the typescript and package it for distribution
-```bash
-$ npm run build && npm run package
-```
-
-Run the tests :heavy_check_mark:  
-```bash
-$ npm test
-
- PASS  ./index.test.js
-  ✓ throws invalid number (3ms)
-  ✓ wait 500 ms (504ms)
-  ✓ test runs (95ms)
-
-...
-```
-
-## Change action.yml
-
-The action.yml defines the inputs and output for your action.
-
-Update the action.yml with your name, description, inputs and outputs for your action.
-
-See the [documentation](https://help.github.com/en/articles/metadata-syntax-for-github-actions)
-
-## Change the Code
-
-Most toolkit and CI/CD operations involve async operations so the action is run in an async function.
-
-```javascript
-import * as core from '@actions/core';
-...
-
-async function run() {
-  try { 
-      ...
-  } 
-  catch (error) {
-    core.setFailed(error.message);
-  }
-}
-
-run()
-```
-
-See the [toolkit documentation](https://github.com/actions/toolkit/blob/master/README.md#packages) for the various packages.
-
-## Publish to a distribution branch
-
-Actions are run from GitHub repos so we will checkin the packed dist folder. 
-
-Then run [ncc](https://github.com/zeit/ncc) and push the results:
-```bash
-$ npm run package
-$ git add dist
-$ git commit -a -m "prod dependencies"
-$ git push origin releases/v1
-```
-
-Note: We recommend using the `--license` option for ncc, which will create a license file for all of the production node modules used in your project.
-
-Your action is now published! :rocket: 
-
-See the [versioning documentation](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md)
-
-## Validate
-
-You can now validate the action by referencing `./` in a workflow in your repo (see [test.yml](.github/workflows/test.yml))
+### Basic Usage (Sync from Live Theme)
 
 ```yaml
-uses: ./
-with:
-  milliseconds: 1000
+- uses: devil1991/shopify-jsons-sync@v1.4.2
+  with:
+    store: '${{ env.SHOPIFY_FLAG_STORE }}'
+    theme: '${{ env.TARGET_THEME_ID }}'
 ```
 
-See the [actions tab](https://github.com/actions/typescript-action/actions) for runs of this action! :rocket:
+### Advanced Usage (Sync from Specific Source Theme)
 
-## Usage:
+```yaml
+- uses: devil1991/shopify-jsons-sync@v1.4.2
+  with:
+    store: '${{ env.SHOPIFY_FLAG_STORE }}'
+    theme: '${{ env.TARGET_THEME_ID }}'              # Where to push
+    source-theme: '${{ env.SOURCE_THEME_ID }}'       # Where to pull from
+```
 
-After testing you can [create a v1 tag](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md) to reference the stable and latest V1 action
+## Inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `store` | Yes | - | The Shopify store URL or identifier |
+| `theme` | Yes | - | Target theme ID where files will be pushed to |
+| `source-theme` | No | - | Source theme ID to pull JSON files from (if not provided, pulls from live theme) |
+| `working-directory` | No | - | Working directory path if the action should run in a subdirectory |
+
+## How It Works
+
+1. **Pull Phase**: Downloads JSON files from the source theme:
+   - Live theme (when `source-theme` is not provided, default behavior)
+   - Specific source theme (when `source-theme` is provided)
+
+2. **Sync Phase**: 
+   - Merges local JSON files with remote versions
+   - Remote content takes priority in conflicts
+   - Removes disabled blocks from merged content
+
+3. **Push Phase**: 
+   - Pushes merged locale files to the target theme (specified by `theme` parameter)
+   - Pushes any new template files that don't exist remotely
+   - Always uses the `theme` parameter as the destination
+
+## Use Cases
+
+### Scenario 1: Standard Deployment (Default)
+- Pull latest content from **source theme** (defaults to live theme)
+- Push updates to **target theme** (staging, preview, etc.)
+- Useful for most deployment workflows
+
+### Scenario 2: Theme-to-Theme Sync
+- Pull content from **specific source theme** (unpublished/development theme)
+- Push updates to **target theme**
+- Useful when working with multiple development themes or when the "source of truth" is not the live theme
+
+## Example Workflows
+
+### Standard Source-to-Target Sync
+```yaml
+- name: Sync JSON from Source Theme
+  uses: devil1991/shopify-jsons-sync@v1.4.2
+  with:
+    store: '${{ env.SHOPIFY_FLAG_STORE }}'
+    theme: '${{ env.QA_THEME_ID }}'
+    # No source-theme means it pulls from live theme (default source)
+```
+
+### Development Theme-to-Theme Sync
+```yaml
+- name: Sync JSON between Development Themes
+  uses: devil1991/shopify-jsons-sync@v1.4.2
+  with:
+    store: '${{ env.SHOPIFY_FLAG_STORE }}'
+    theme: '${{ env.TARGET_THEME_ID }}'           # Where to push
+    source-theme: '${{ env.DEV_THEME_ID }}'   # Where to pull from
+```
+
+### Conditional Sync Based on Environment
+```yaml
+- name: Sync JSON Files
+  uses: devil1991/shopify-jsons-sync@v1.4.2
+  with:
+    store: '${{ env.SHOPIFY_FLAG_STORE }}'
+    theme: '${{ env.TARGET_THEME_ID }}'
+    source-theme: ${{ env.ENVIRONMENT != 'production' && env.DEV_THEME_ID || '' }}
+```
+
+## Development
+
+### Build
+```bash
+npm install
+npm run build && npm run package
+```
+
+### Test
+```bash
+npm test
+```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
